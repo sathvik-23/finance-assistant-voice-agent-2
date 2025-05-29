@@ -1,3 +1,5 @@
+# agents/language_agent/language_agent.py
+
 from agno.agent import Agent
 from agno.models.google import Gemini
 from agno.tools import tool
@@ -6,16 +8,19 @@ from agno.tools import tool
 def generate_market_brief(insights: dict) -> str:
     """
     Generates a natural spoken-style financial summary from structured insights.
-    Returns a string formatted for spoken delivery — e.g., "Today, Nvidia posted strong Q1..."
+    Returns a string formatted for spoken delivery — e.g., 
+    "Today, your Asia tech allocation is 22% of AUM, up from 18% yesterday..."
     """
     return f"""
 You are a voice assistant for a finance executive.
 
 Given the following structured insights, generate a professional, natural-sounding spoken briefing suitable for a portfolio manager.
 
-Make it short (1–3 sentences), clear, and use natural language. Avoid bullet points or markdown.
+Use a confident and concise tone.
 
-Start with something like "Today" or "As of this morning".
+Avoid markdown, bullet points, or long paragraphs. Keep it to 1–3 sentences.
+
+Start with something like “Today” or “As of this morning”.
 
 Insights:
 {insights}
@@ -27,9 +32,10 @@ language_agent = Agent(
     model=Gemini(id="gemini-1.5-flash"),
     tools=[generate_market_brief],
     instructions=[
-        "Your job is to call the `generate_market_brief` tool to receive a prompt and then generate the final natural language response.",
-        "The response must be concise, clear, and suitable for voice delivery. No bullet points or markdown.",
-        "Do not include tool call code in your output — return the final response only.",
+        "Your job is to call the `generate_market_brief` tool.",
+        "Pass the structured insights (from analysis-agent) to this tool as JSON.",
+        "Return the final spoken-style response ONLY. No tool call code or explanation.",
+        "The summary must sound like a brief verbal report to a finance executive.",
     ],
     show_tool_calls=True,
     markdown=False,

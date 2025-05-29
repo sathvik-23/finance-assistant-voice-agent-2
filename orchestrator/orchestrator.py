@@ -36,18 +36,22 @@ finance_team = Team(
         "Start by asking the API Agent to fetch financial and market metrics.",
         "Then ask the Scraping Agent to get press releases or investor updates.",
         "Then ask the Retriever Agent to pull internal PDF knowledge if relevant.",
-        "Then ask the Analysis Agent to synthesize the structured and unstructured data.",
-        "Finally, ask the Language Agent to polish and present a final summary.",
+        "Then ask the Analysis Agent to output structured insights in JSON format with keys: aum_allocation, earnings_surprises, and sentiment.",
+        "Finally, the Language Agent must use the `generate_market_brief` tool with the insights JSON to produce a spoken-style response.",
     ],
     add_datetime_to_instructions=True,
     enable_agentic_context=True,
     share_member_interactions=True,
     show_members_responses=True,
     markdown=True,
+    
 )
 
 # 5️⃣ Entry point
 if __name__ == "__main__":
-    prompt = "Summarize Nvidia’s Q1 2025 earnings?"
+    prompt ="What’s our risk exposure in Asia tech stocks today, and highlight any earnings surprises?"
     print(">>> Running Finance Orchestrator...")
     finance_team.print_response(prompt, stream=True)
+
+
+# "Summarize Nvidia’s Q1 2025 earnings?"
