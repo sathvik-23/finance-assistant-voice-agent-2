@@ -5,105 +5,113 @@ import requests
 import streamlit as st
 from audiorecorder import audiorecorder
 
-# Streamlit setup
+# Config
 st.set_page_config(page_title="Finance Assistant", layout="centered")
 st.title("🎙️ Voice & Text Multi-Agent Finance Assistant")
 
+# API endpoints
 VOICE_API_TRANSCRIBE = "http://localhost:8001/voice/transcribe"
-ORCHESTRATOR_API     = "http://localhost:8001/v1/run"
-VOICE_API_SPEAK      = "http://localhost:8001/voice/speak"
+VOICE_API_SPEAK = "http://localhost:8001/voice/speak"
+ORCHESTRATOR_API = "http://localhost:8001/v1/run"
 
-# ── 1️⃣ TEXT INPUT ─────────────────────────────────────────────────────
-st.markdown("## 1️⃣ Type a question (fallback)")
-user_q = st.text_input("Your question")
-if st.button("▶️ Submit Text") and user_q:
-    with st.spinner("🤖 Agents are analyzing your question…"):
+# ─────────────────────────────────────────────
+# TEXT MODE
+# ─────────────────────────────────────────────
+st.markdown("## 1️⃣ Type a question")
+text_input = st.text_input("Your question")
+if st.button("▶️ Submit Text") and text_input:
+    with st.spinner("🤖 Agents are analyzing your question..."):
         try:
             resp = requests.post(ORCHESTRATOR_API, data={
-                "message": user_q,
+                "message": text_input,
                 "stream": "false",
                 "session_id": f"text-{datetime.now().isoformat()}"
             })
             resp.raise_for_status()
-            data = resp.json()
+            result = resp.json()
         except Exception as e:
             st.error(f"❌ Error: {e}")
             st.stop()
 
     st.markdown("### 🧠 Final Summary")
-    st.markdown(data.get("content", "*No summary returned.*"))
+    final = result.get("content", "*No summary returned.*")
+    st.markdown(final)
 
-    for i, call in enumerate(data.get("tool_calls", []), 1):
+    for i, call in enumerate(result.get("tool_calls", []), 1):
         st.markdown(f"### 🛠️ Tool Call {i}")
         st.code(call.get("raw", str(call)))
 
-    for resp in data.get("member_responses", []):
-        with st.expander(resp.get("agent", {}).get("name", "Agent")):
-            st.markdown(resp.get("content", ""))
+    for r in result.get("member_responses", []):
+        with st.expander(r.get("agent", {}).get("name", "Agent")):
+            st.markdown(r.get("content", ""))
 
-# ── 2️⃣ VOICE INPUT ─────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# VOICE MODE
+# ─────────────────────────────────────────────
 st.markdown("---")
 st.markdown("## 2️⃣ Speak or Upload your question")
 
-# 🎤 Record voice
-recorded_audio = audiorecorder("🎙️ Record", "⏹️ Stop", key="voice-rec")
+# 🎙️ Record
+recorded = audiorecorder("🎙️ Record", "⏹️ Stop", key="rec")
 recorded_bytes = None
-if recorded_audio and hasattr(recorded_audio, "export"):
+if recorded and hasattr(recorded, "export"):
     buf = BytesIO()
-    recorded_audio.export(buf, format="wav")
+    recorded.export(buf, format="wav")
     recorded_bytes = buf.getvalue()
+    st.success("✅ Voice recorded!")
+    st.audio(recorded_bytes, format="audio/wav")
 
-# 📁 Upload voice
+# 📁 Upload
 uploaded_file = st.file_uploader("...or upload a .wav file", type=["wav"])
 uploaded_bytes = uploaded_file.read() if uploaded_file else None
 
-# 🎧 Playback & Status
+# Pick best source
 final_audio = recorded_bytes or uploaded_bytes
-if final_audio:
-    st.success("✅ Audio ready!")
-    st.audio(final_audio, format="audio/wav")
 
+# ✅ Submit Voice Button
+if final_audio:
     if st.button("✅ Submit Voice"):
         with st.spinner("⏳ Transcribing and orchestrating..."):
             try:
-                r1 = requests.post(
-                    VOICE_API_TRANSCRIBE,
-                    files={"audio_file": ("voice.wav", final_audio, "audio/wav")}
-                )
+                r1 = requests.post(VOICE_API_TRANSCRIBE, files={
+                    "audio_file": ("voice.wav", final_audio, "audio/wav")
+                })
                 r1.raise_for_status()
                 transcript = r1.json().get("transcript", "")
 
-                r2 = requests.post(
-                    ORCHESTRATOR_API,
-                    data={
-                        "message": transcript,
-                        "stream": "false",
-                        "session_id": f"voice-{datetime.now().isoformat()}"
-                    }
-                )
+                r2 = requests.post(ORCHESTRATOR_API, data={
+                    "message": transcript,
+                    "stream": "false",
+                    "session_id": f"voice-{datetime.now().isoformat()}"
+                })
                 r2.raise_for_status()
-                data = r2.json()
+                result = r2.json()
             except Exception as e:
                 st.error(f"❌ Error: {e}")
                 st.stop()
 
         st.markdown("### 📝 Transcript")
-        st.write(transcript or "*<no transcript>*")
+        st.write(transcript or "*No transcript returned.*")
 
+        final = result.get("content", "*No summary returned.*")
         st.markdown("### 🧠 Final Summary")
-        st.markdown(data.get("content", "*No summary returned.*"))
+        st.markdown(final)
 
-        for i, call in enumerate(data.get("tool_calls", []), 1):
+        for i, call in enumerate(result.get("tool_calls", []), 1):
             st.markdown(f"### 🛠️ Tool Call {i}")
             st.code(call.get("raw", str(call)))
 
-        for resp in data.get("member_responses", []):
-            with st.expander(resp.get("agent", {}).get("name", "Agent")):
-                st.markdown(resp.get("content", ""))
+        for r in result.get("member_responses", []):
+            with st.expander(r.get("agent", {}).get("name", "Agent")):
+                st.markdown(r.get("content", ""))
 
-        if st.button("🔊 Speak Summary"):
-            r3 = requests.post(VOICE_API_SPEAK, data={"text": data.get("content", "")})
-            if r3.status_code == 200:
-                st.audio(base64.b64decode(r3.json().get("audio", "")), format="audio/mp3")
-            else:
-                st.error("TTS failed.")
+        # 🔊 Auto TTS
+        try:
+            st.info("🔈 Speaking summary...")
+            r3 = requests.post(VOICE_API_SPEAK, data={"text": final})
+            r3.raise_for_status()
+            audio_base64 = r3.json().get("audio", "")
+            if audio_base64:
+                st.audio(base64.b64decode(audio_base64), format="audio/mp3")
+        except Exception as e:
+            st.warning(f"⚠️ TTS failed: {e}")
