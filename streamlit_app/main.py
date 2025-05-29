@@ -33,9 +33,13 @@ if st.button("▶️ Submit Text") and text_input:
             st.error(f"❌ Error: {e}")
             st.stop()
 
+    # Split and isolate final summary
+    content = result.get("content", "*No summary returned.*")
+    parts = content.strip().split("\n")
+    final_summary = parts[-1] if len(parts) > 1 else content
+
     st.markdown("### 🧠 Final Summary")
-    final = result.get("content", "*No summary returned.*")
-    st.markdown(final)
+    st.markdown(final_summary)
 
     for i, call in enumerate(result.get("tool_calls", []), 1):
         st.markdown(f"### 🛠️ Tool Call {i}")
@@ -44,6 +48,17 @@ if st.button("▶️ Submit Text") and text_input:
     for r in result.get("member_responses", []):
         with st.expander(r.get("agent", {}).get("name", "Agent")):
             st.markdown(r.get("content", ""))
+
+    # Speak only the final summary
+    try:
+        st.info("🔈 Speaking summary...")
+        r3 = requests.post(VOICE_API_SPEAK, data={"text": final_summary})
+        r3.raise_for_status()
+        audio_base64 = r3.json().get("audio", "")
+        if audio_base64:
+            st.audio(base64.b64decode(audio_base64), format="audio/mp3")
+    except Exception as e:
+        st.warning(f"⚠️ TTS failed: {e}")
 
 # ─────────────────────────────────────────────
 # VOICE MODE
@@ -93,9 +108,13 @@ if final_audio:
         st.markdown("### 📝 Transcript")
         st.write(transcript or "*No transcript returned.*")
 
-        final = result.get("content", "*No summary returned.*")
+        # Final summary (only last paragraph)
+        content = result.get("content", "*No summary returned.*")
+        parts = content.strip().split("\n")
+        final_summary = parts[-1] if len(parts) > 1 else content
+
         st.markdown("### 🧠 Final Summary")
-        st.markdown(final)
+        st.markdown(final_summary)
 
         for i, call in enumerate(result.get("tool_calls", []), 1):
             st.markdown(f"### 🛠️ Tool Call {i}")
@@ -105,10 +124,10 @@ if final_audio:
             with st.expander(r.get("agent", {}).get("name", "Agent")):
                 st.markdown(r.get("content", ""))
 
-        # 🔊 Auto TTS
+        # 🔊 Speak final summary
         try:
             st.info("🔈 Speaking summary...")
-            r3 = requests.post(VOICE_API_SPEAK, data={"text": final})
+            r3 = requests.post(VOICE_API_SPEAK, data={"text": final_summary})
             r3.raise_for_status()
             audio_base64 = r3.json().get("audio", "")
             if audio_base64:
