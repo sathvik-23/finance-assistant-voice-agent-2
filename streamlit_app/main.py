@@ -1,51 +1,104 @@
 import streamlit as st
-import requests
+import requests, base64
 from datetime import datetime
 
-st.set_page_config(page_title="Finance Assistant", page_icon="📈", layout="centered")
-st.title("📊 Multi-Agent Finance Assistant")
+st.set_page_config(page_title="Finance Assistant", layout="centered")
+st.title("🎙️ Voice & Text Multi-Agent Finance Assistant")
 
-user_query = st.text_input("Your Question", placeholder="e.g. What’s our risk exposure in Asia tech stocks today?")
-submit_button = st.button("Submit")
+VOICE_API_TRANSCRIBE = "http://localhost:8001/voice/transcribe"
+ORCHESTRATOR_API     = "http://localhost:8001/v1/run"
+VOICE_API_SPEAK      = "http://localhost:8001/voice/speak"
 
-API_URL = "http://localhost:8001/v1/run"
+# ─────────────────────────────────────────────
+# 1️⃣ Type your question (Text Input)
+# ─────────────────────────────────────────────
+st.markdown("## 1️⃣ Type a question (fallback)")
+user_q = st.text_input("Your question")
 
-if submit_button and user_query.strip():
-    with st.spinner("Agents are analyzing your query..."):
-        try:
-            response = requests.post(
-                API_URL,
-                data={
-                    "message": user_query,
-                    "stream": "false",
-                    "session_id": f"streamlit-session-{datetime.now().isoformat()}"
-                }
-            )
-            if response.status_code != 200:
-                st.error(f"❌ API Error: {response.status_code}\n{response.text}")
+if st.button("▶️ Submit Text") and user_q:
+    with st.spinner("🤖 Agents are analyzing your question…"):
+        resp = requests.post(
+            ORCHESTRATOR_API,
+            data={
+                "message": user_q,
+                "stream": "false",
+                "session_id": f"text-{datetime.now().isoformat()}"
+            }
+        )
+    if resp.status_code != 200:
+        st.error(f"❌ API Error: {resp.status_code}\n{resp.text}")
+    else:
+        data = resp.json()
+        st.markdown("### 🧠 Final Summary")
+        st.markdown(data.get("content", "*No summary returned.*"))
+
+        for i, call in enumerate(data.get("tool_calls", []), 1):
+            st.markdown(f"### 🛠️ Tool Call {i}")
+            st.code(call.get("raw", str(call)))
+
+        for resp in data.get("member_responses", []):
+            with st.expander(resp.get("agent", {}).get("name", "Agent")):
+                st.markdown(resp.get("content", ""))
+
+# ─────────────────────────────────────────────
+# 2️⃣ Speak your question (Voice File Upload)
+# ─────────────────────────────────────────────
+st.markdown("---")
+st.markdown("## 2️⃣ Or speak your question")
+
+uploaded = st.file_uploader("🎤 Upload a voice file (WAV or MP3)", type=["wav", "mp3"])
+
+if uploaded:
+    audio_bytes = uploaded.read()
+    st.success(f"✅ Audio uploaded: {uploaded.name} ({len(audio_bytes)} bytes)")
+    st.audio(audio_bytes, format="audio/wav")
+
+    if st.button("✅ Submit Voice"):
+        with st.spinner("🔁 Transcribing and sending to agents..."):
+            try:
+                # 1. Transcribe via STT
+                r1 = requests.post(
+                    VOICE_API_TRANSCRIBE,
+                    files={"audio_file": (uploaded.name, audio_bytes, uploaded.type)}
+                )
+                r1.raise_for_status()
+                transcript = r1.json().get("transcript", "")
+
+                # 2. Send transcript to orchestrator
+                r2 = requests.post(
+                    ORCHESTRATOR_API,
+                    data={
+                        "message": transcript,
+                        "stream": "false",
+                        "session_id": f"voice-{datetime.now().isoformat()}"
+                    }
+                )
+                r2.raise_for_status()
+                data = r2.json()
+
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+                st.stop()
+
+        # ─ Display Results ─
+        st.markdown("### 📝 Transcript")
+        st.write(transcript or "*<no transcript>*")
+
+        st.markdown("### 🧠 Final Summary")
+        st.markdown(data.get("content", "*No summary returned.*"))
+
+        for i, call in enumerate(data.get("tool_calls", []), 1):
+            st.markdown(f"### 🛠️ Tool Call {i}")
+            st.code(call.get("raw", str(call)))
+
+        for resp in data.get("member_responses", []):
+            with st.expander(resp.get("agent", {}).get("name", "Agent")):
+                st.markdown(resp.get("content", ""))
+
+        # Optional: TTS
+        if st.button("🔊 Speak Summary"):
+            r3 = requests.post(VOICE_API_SPEAK, data={"text": data.get("content", "")})
+            if r3.status_code == 200:
+                st.audio(base64.b64decode(r3.json().get("audio", "")), format="audio/mp3")
             else:
-                data = response.json()
-
-                # 🎯 Final summary (main content)
-                st.markdown("### 🧠 Final Summary")
-                st.markdown(data.get("content", "*No summary returned.*"))
-
-                # 📦 Tool Calls
-                tool_calls = data.get("tool_calls", [])
-                if tool_calls:
-                    st.markdown("### 🛠️ Tool Calls Executed")
-                    for i, call in enumerate(tool_calls):
-                        st.code(f"{i+1}. {call.get('raw', str(call))}", language="python")
-
-                # 👨‍👩‍👧 Agent Responses
-                member_responses = data.get("member_responses", [])
-                if member_responses:
-                    st.markdown("### 👥 Agent Responses")
-                    for resp in member_responses:
-                        name = resp.get("agent", {}).get("name", "Unnamed Agent")
-                        content = resp.get("content", "No response")
-                        with st.expander(f"📤 {name}"):
-                            st.markdown(content)
-
-        except Exception as e:
-            st.error(f"🔌 Connection error: {e}")
+                st.error("❌ TTS failed.")
