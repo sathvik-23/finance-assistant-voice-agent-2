@@ -3,7 +3,7 @@ from io import BytesIO
 from datetime import datetime
 import requests
 import streamlit as st
-from audiorecorder import audiorecorder
+from st_audiorec import st_audiorec  # ✅ cloud/web compatible voice recording
 
 # Config
 st.set_page_config(page_title="Finance Assistant", layout="centered")
@@ -14,9 +14,7 @@ VOICE_API_TRANSCRIBE = "http://localhost:8001/voice/transcribe"
 VOICE_API_SPEAK = "http://localhost:8001/voice/speak"
 ORCHESTRATOR_API = "http://localhost:8001/v1/run"
 
-# ─────────────────────────────────────────────
-# TEXT MODE
-# ─────────────────────────────────────────────
+# ────────────── TEXT MODE ──────────────
 st.markdown("## 1️⃣ Type a question")
 text_input = st.text_input("Your question")
 if st.button("▶️ Submit Text") and text_input:
@@ -33,7 +31,7 @@ if st.button("▶️ Submit Text") and text_input:
             st.error(f"❌ Error: {e}")
             st.stop()
 
-    # Split and isolate final summary
+    # Extract summary
     content = result.get("content", "*No summary returned.*")
     parts = content.strip().split("\n")
     final_summary = parts[-1] if len(parts) > 1 else content
@@ -49,7 +47,6 @@ if st.button("▶️ Submit Text") and text_input:
         with st.expander(r.get("agent", {}).get("name", "Agent")):
             st.markdown(r.get("content", ""))
 
-    # Speak only the final summary
     try:
         st.info("🔈 Speaking summary...")
         r3 = requests.post(VOICE_API_SPEAK, data={"text": final_summary})
@@ -60,19 +57,14 @@ if st.button("▶️ Submit Text") and text_input:
     except Exception as e:
         st.warning(f"⚠️ TTS failed: {e}")
 
-# ─────────────────────────────────────────────
-# VOICE MODE
-# ─────────────────────────────────────────────
+# ────────────── VOICE MODE ──────────────
 st.markdown("---")
 st.markdown("## 2️⃣ Speak or Upload your question")
 
-# 🎙️ Record
-recorded = audiorecorder("🎙️ Record", "⏹️ Stop", key="rec")
-recorded_bytes = None
-if recorded and hasattr(recorded, "export"):
-    buf = BytesIO()
-    recorded.export(buf, format="wav")
-    recorded_bytes = buf.getvalue()
+# 🎙️ Record (works online)
+recorded_bytes = st_audiorec()
+
+if recorded_bytes:
     st.success("✅ Voice recorded!")
     st.audio(recorded_bytes, format="audio/wav")
 
@@ -80,10 +72,10 @@ if recorded and hasattr(recorded, "export"):
 uploaded_file = st.file_uploader("...or upload a .wav file", type=["wav"])
 uploaded_bytes = uploaded_file.read() if uploaded_file else None
 
-# Pick best source
+# Pick source
 final_audio = recorded_bytes or uploaded_bytes
 
-# ✅ Submit Voice Button
+# ✅ Submit Voice
 if final_audio:
     if st.button("✅ Submit Voice"):
         with st.spinner("⏳ Transcribing and orchestrating..."):
@@ -108,7 +100,6 @@ if final_audio:
         st.markdown("### 📝 Transcript")
         st.write(transcript or "*No transcript returned.*")
 
-        # Final summary (only last paragraph)
         content = result.get("content", "*No summary returned.*")
         parts = content.strip().split("\n")
         final_summary = parts[-1] if len(parts) > 1 else content
@@ -124,7 +115,6 @@ if final_audio:
             with st.expander(r.get("agent", {}).get("name", "Agent")):
                 st.markdown(r.get("content", ""))
 
-        # 🔊 Speak final summary
         try:
             st.info("🔈 Speaking summary...")
             r3 = requests.post(VOICE_API_SPEAK, data={"text": final_summary})
