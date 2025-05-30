@@ -10,9 +10,14 @@ st.set_page_config(page_title="Finance Assistant", layout="centered")
 st.title("🎙️ Voice & Text Multi-Agent Finance Assistant")
 
 # API endpoints
-VOICE_API_TRANSCRIBE = "https://finance-assistant-voice-agent-2.onrender.com/voice/transcribe"
-VOICE_API_SPEAK = "https://finance-assistant-voice-agent-2.onrender.com/voice/speak"
-ORCHESTRATOR_API = "https://finance-assistant-voice-agent-2.onrender.com/v1/run"
+# VOICE_API_TRANSCRIBE = "https://finance-assistant-voice-agent-2.onrender.com/voice/transcribe"
+# VOICE_API_SPEAK = "https://finance-assistant-voice-agent-2.onrender.com/voice/speak"
+# ORCHESTRATOR_API = "https://finance-assistant-voice-agent-2.onrender.com/v1/run"
+
+VOICE_API_TRANSCRIBE = "http://localhost:8001/voice/transcribe"
+VOICE_API_SPEAK = "http://localhost:8001/voice/speak"
+ORCHESTRATOR_API = "http://localhost:8001/v1/run"
+
 
 # ────────────── TEXT MODE ──────────────
 st.markdown("## 1️⃣ Type a question")
