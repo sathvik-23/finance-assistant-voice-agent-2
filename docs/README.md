@@ -1,182 +1,150 @@
 # 🧠 Multi-Agent Financial Assistant (Voice + Text)
 
-This is a modular, multi-agent financial assistant that generates real-time market insights and spoken briefings using coordinated AI agents. Built with [Agno](https://github.com/agnos-ai/agno), Streamlit, and FastAPI.
+This branch introduces and stabilizes voice capabilities for the AI-powered financial assistant, allowing users to interact through speech and receive audio responses using Groq's TTS models and Gemini orchestration.
 
 ---
 
-## 🎯 Use Case: Morning Market Brief
+## 🧠 Overview
 
-> “What’s our risk exposure in Asia tech stocks today, and highlight any earnings surprises?”
+The voice agent supports:
 
-📢 The assistant responds:
-
-> “Today, your Asia tech allocation is 22% of AUM, up from 18% yesterday. TSMC beat estimates by 4%, Samsung missed by 2%. Regional sentiment is neutral with a cautionary tilt due to rising yields.”
-
----
-
-## 🏗️ Architecture Overview
-
-- **Agno Framework** – Modular agent orchestration and memory.
-- **Streamlit App** – Frontend for chat + real-time summaries.
-- **FastAPI Server** – Hosts agent team as a REST API.
-- **LangGraph-style Coordination** – Sequential agent reasoning.
-- **Gemini API (Google)** – Used for LLM and embedding logic.
-- **Optional** – PDF parsing, web scraping, Pinecone vector retrieval.
+- 🎤 Transcription of audio to text
+- 🌐 Translation (optional)
+- 🗣️ Text-to-speech audio generation
+- 🤖 Orchestrated multi-agent reasoning over financial data
 
 ---
 
-## 🧠 Agent Roles
+## 🚀 Features
 
-| Agent             | Purpose                                                       |
-| ----------------- | ------------------------------------------------------------- |
-| `api-agent`       | Pulls real-time metrics via Yahoo/AlphaVantage                |
-| `scraping-agent`  | Extracts news/filings from investor portals                   |
-| `retriever-agent` | Retrieves embedded documents from Pinecone                    |
-| `analysis-agent`  | Synthesizes structured market insights                        |
-| `language-agent`  | Calls `generate_market_brief()` to craft spoken-style summary |
+- **Voice-to-Text (STT)** via Groq Whisper
+- **Text-to-Voice (TTS)** via Groq PlayAI
+- **Streamlit UI** for seamless interaction
+- **FastAPI backend** with orchestrated agents
+- **Multi-agent coordination** using Gemini
 
 ---
 
-## 🗃️ Project Structure
+## 🛠️ Setup Instructions
 
-```
-.
-├── agents/                    # Modular agents (API, scraping, etc.)
-├── orchestrator/             # Main coordinator (Agno Team)
-├── streamlit_app/            # Frontend interface
-├── fastapi_server/           # FastAPI wrapper for agent team
-├── data_ingestion/           # Document loaders, scrapers
-├── requirements.txt
-├── orchestrator_api.py       # FastAPI app entrypoint
-├── run.sh
-└── docs/
-    ├── README.md             # You're here!
-    ├── ai_tool_usage.md      # Prompt/code generation audit
-    └── architecture.png      # Visual diagram
-```
-
----
-
-## 🚀 Running the App
-
-### 1. Clone & Install
+### 1. Clone and switch to this branch
 
 ```bash
-git clone https://github.com/yourusername/finance-assistant.git
-cd finance-assistant
-python -m venv venv
-source venv/bin/activate
+git clone https://github.com/yourusername/finance-assistant-voice-agent.git
+cd finance-assistant-voice-agent
+git checkout chami
+```
+
+### 2. Setup virtual environment
+
+```bash
+python3 -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+```
+
+### 3. Install dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### 2. Set Environment Variables
+### 4. Configure environment
 
-Create a `.env` file:
+Create a `.env` file in the root:
 
 ```env
 GOOGLE_API_KEY=your_google_api_key
-PINECONE_API_KEY=your_pinecone_key
-PINECONE_ENVIRONMENT=...
-PINECONE_INDEX_NAME=...
+GROQ_TRANSCRIPTION_MODEL=whisper-large-v3
+GROQ_TRANSLATION_MODEL=whisper-large-v3
+GROQ_TTS_MODEL=playai-tts
+GROQ_TTS_VOICE=Chip-PlayAI
 ```
 
-### 3. Start the Orchestrator (FastAPI)
+---
+
+## 🚦 Running the App
+
+### ➤ Start FastAPI Backend
 
 ```bash
-python orchestrator_api.py
+python api.py
 ```
 
-Runs at: [http://localhost:8001/docs](http://localhost:8001/docs)
+Serves APIs on: `http://localhost:8001`
 
-### 4. Start the Streamlit App
+### ➤ Start Streamlit Frontend
 
 ```bash
-streamlit run streamlit_app/main.py
+streamlit run streamlit_app.py
 ```
 
-Runs at: [http://localhost:8501](http://localhost:8501)
+Access UI at: `http://localhost:8501`
 
 ---
 
-## 🔄 How It Works
+## 🔊 API Endpoints
 
-1. **User** enters a market question in Streamlit.
-2. **FastAPI server** receives the query and streams the response.
-3. **Agno team** coordinates each agent:
-   - Fetches data
-   - Scrapes news
-   - Analyzes risks
-   - Synthesizes summary
-4. **Streamlit** shows per-agent steps + final polished response.
+| Endpoint            | Method | Description                   |
+| ------------------- | ------ | ----------------------------- |
+| `/voice/transcribe` | POST   | Upload audio, return text     |
+| `/voice/speak`      | POST   | Send text, return audio (b64) |
+| `/v1/run`           | POST   | Run orchestrator team         |
 
 ---
 
-## 📦 Tooling
+## 🧩 Project Structure
 
-- 🧠 **Agno**: agent orchestration
-- 🗂️ **Pinecone**: vector DB for documents (optional)
-- 📢 **Google Gemini API**: LLM + embeddings
-- 🎨 **Streamlit**: frontend UI
-- 🚀 **FastAPI**: backend orchestration API
-- 📜 **Whisper / Coqui / Piper**: for STT/TTS (optional voice mode)
-
----
-
-## 📊 Screenshots
-
-> Add visuals showing:
-
-- Streamlit app in action
-- Real-time agent progress
-- Final spoken-style summaries
-
----
-
-## 📄 Documentation
-
-- [`docs/ai_tool_usage.md`](./docs/ai_tool_usage.md): Logs of AI-generated prompts & code.
-- [`docs/architecture.png`](./docs/architecture.png): Agent architecture flow.
+```
+├── agents/
+│   └── voice_agent/
+│       ├── voice_agent.py         # VoiceAgent class
+│       └── voice_agent_agent.py   # Agent wrapper for orchestration
+├── orchestrator/
+│   └── orchestrator.py            # Team definition
+├── fastapi_server/
+│   └── routes/
+│       └── endpoints.py           # /voice API handlers
+├── streamlit_app.py               # Streamlit frontend
+├── api.py                         # Backend entrypoint
+├── .env                           # API keys
+├── requirements.txt
+└── README.md
+```
 
 ---
 
-## 🧪 Tests
+## 🧪 Troubleshooting
 
-Run unit tests for agent behaviors:
+- **500 error from /voice/speak**  
+  → You’ve likely hit Groq’s daily TTS limit (token quota). Wait or upgrade tier.
+
+- **Audio duration is 0 seconds**  
+  → TTS failed silently or returned empty. Fallback logic recommended.
+
+- **Transcription returns empty string**  
+  → Ensure audio is in WAV/MP3 format and valid.
+
+---
+
+## 🤝 Contributing
 
 ```bash
-pytest test_agents/
+git checkout -b feature/my-feature
+git add .
+git commit -m "feat: add new feature"
+git push origin feature/my-feature
 ```
 
----
-
-## 📦 Deployment
-
-You can deploy:
-
-- 🚢 FastAPI backend via Render/Fly.io
-- 🛰️ Streamlit app on [Streamlit Cloud](https://streamlit.io/cloud)
+Then open a pull request!
 
 ---
 
-## ✅ To Do
+## 📄 License
 
-- [ ] Add STT/TTS voice agent (Whisper + Piper)
-- [ ] Dockerize + add `docker-compose.yml`
-- [ ] Deploy backend + frontend live
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-## 🙌 Credits
+## 📬 Contact
 
-Built with:
-
-- [Agno Framework](https://github.com/agnos-ai/agno)
-- [Streamlit](https://streamlit.io)
-- [Google Gemini](https://ai.google.dev)
-- [Pinecone](https://www.pinecone.io)
-
----
-
-## 🛡️ Disclaimer
-
-This system is for **educational use only** and not intended as financial advice. Always consult a qualified professional before making investment decisions.
+For questions, email [sathvik238@gmail.com]
