@@ -3,7 +3,7 @@ from io import BytesIO
 from datetime import datetime
 import requests
 import streamlit as st
-from st_audiorec import st_audiorec  # ✅ Cloud-safe recorder
+from audio_recorder_streamlit import audio_recorder  # ✅ Streamlit Cloud–compatible
 
 # Config
 st.set_page_config(page_title="Finance Assistant", layout="centered")
@@ -31,7 +31,6 @@ if st.button("▶️ Submit Text") and text_input:
             st.error(f"❌ Error: {e}")
             st.stop()
 
-    # Extract final paragraph as summary
     content = result.get("content", "*No summary returned.*")
     parts = content.strip().split("\n")
     final_summary = parts[-1] if len(parts) > 1 else content
@@ -64,18 +63,18 @@ st.markdown("---")
 st.markdown("## 2️⃣ Speak or Upload your question")
 
 # 🎙️ Record (browser-safe)
-recorded_bytes = st_audiorec()
+recorded_audio = audio_recorder()
 
-if recorded_bytes:
+if recorded_audio:
     st.success("✅ Voice recorded!")
-    st.audio(recorded_bytes, format="audio/wav")
+    st.audio(recorded_audio, format="audio/wav")
 
 # 📁 Upload
 uploaded_file = st.file_uploader("...or upload a .wav file", type=["wav"])
 uploaded_bytes = uploaded_file.read() if uploaded_file else None
 
 # Pick best available audio
-final_audio = recorded_bytes or uploaded_bytes
+final_audio = recorded_audio or uploaded_bytes
 
 # ✅ Submit Voice
 if final_audio:
