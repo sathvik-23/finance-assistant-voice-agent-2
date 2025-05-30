@@ -3,7 +3,7 @@ from io import BytesIO
 from datetime import datetime
 import requests
 import streamlit as st
-from st_audiorec import st_audiorec  # ✅ cloud/web compatible voice recording
+from st_audiorec import st_audiorec  # ✅ Cloud-safe recorder
 
 # Config
 st.set_page_config(page_title="Finance Assistant", layout="centered")
@@ -31,7 +31,7 @@ if st.button("▶️ Submit Text") and text_input:
             st.error(f"❌ Error: {e}")
             st.stop()
 
-    # Extract summary
+    # Extract final paragraph as summary
     content = result.get("content", "*No summary returned.*")
     parts = content.strip().split("\n")
     final_summary = parts[-1] if len(parts) > 1 else content
@@ -47,12 +47,14 @@ if st.button("▶️ Submit Text") and text_input:
         with st.expander(r.get("agent", {}).get("name", "Agent")):
             st.markdown(r.get("content", ""))
 
+    # 🔊 Speak Final Summary
     try:
         st.info("🔈 Speaking summary...")
         r3 = requests.post(VOICE_API_SPEAK, data={"text": final_summary})
         r3.raise_for_status()
         audio_base64 = r3.json().get("audio", "")
         if audio_base64:
+            st.markdown("### 🔊 Audio Summary")
             st.audio(base64.b64decode(audio_base64), format="audio/mp3")
     except Exception as e:
         st.warning(f"⚠️ TTS failed: {e}")
@@ -61,7 +63,7 @@ if st.button("▶️ Submit Text") and text_input:
 st.markdown("---")
 st.markdown("## 2️⃣ Speak or Upload your question")
 
-# 🎙️ Record (works online)
+# 🎙️ Record (browser-safe)
 recorded_bytes = st_audiorec()
 
 if recorded_bytes:
@@ -72,7 +74,7 @@ if recorded_bytes:
 uploaded_file = st.file_uploader("...or upload a .wav file", type=["wav"])
 uploaded_bytes = uploaded_file.read() if uploaded_file else None
 
-# Pick source
+# Pick best available audio
 final_audio = recorded_bytes or uploaded_bytes
 
 # ✅ Submit Voice
@@ -115,12 +117,14 @@ if final_audio:
             with st.expander(r.get("agent", {}).get("name", "Agent")):
                 st.markdown(r.get("content", ""))
 
+        # 🔊 Speak Final Summary
         try:
             st.info("🔈 Speaking summary...")
             r3 = requests.post(VOICE_API_SPEAK, data={"text": final_summary})
             r3.raise_for_status()
             audio_base64 = r3.json().get("audio", "")
             if audio_base64:
+                st.markdown("### 🔊 Audio Summary")
                 st.audio(base64.b64decode(audio_base64), format="audio/mp3")
         except Exception as e:
             st.warning(f"⚠️ TTS failed: {e}")
